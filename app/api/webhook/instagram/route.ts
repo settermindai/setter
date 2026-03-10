@@ -87,7 +87,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-
+    console.log('WEBHOOK BODY:', JSON.stringify(body, null, 2))
+    
     const entry = body.entry?.[0]
     const messaging = entry?.messaging?.[0]
 
