@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server'
 import { buildSystemPrompt } from '@/lib/prompt-builder'
 import { getAIResponse } from '@/lib/ai'
+import { createClient } from '@supabase/supabase-js'
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN
 
-// Bloques por defecto — luego vendrán de Supabase
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
+
+// Bloques por defecto (fallback si no hay en Supabase)
 const DEFAULT_BLOCKS = {
   identidad: `## IDENTIDAD Y VOZ
 Soy Alex, coach de transformación física especializado en personas con poco tiempo.
@@ -51,7 +59,7 @@ Lead: "lo pienso y te digo"
 Tú: "perfecto sin presión — solo dime una cosa: qué tendría que tener la solución perfecta para que dijeras que sí"`,
 }
 
-// Historial en memoria (temporal, luego irá a Supabase)
+// Historial en memoria (para contexto de conversación)
 const conversationHistory: Record<string, Array<{ role: 'user' | 'assistant', content: string }>> = {}
 
 async function sendInstagramMessage(recipientId: string, message: string) {
@@ -68,6 +76,61 @@ async function sendInstagramMessage(recipientId: string, message: string) {
     }
   )
   return response.json()
+}
+
+async function getBlocks() {
+  try {
+    const supabase = getSupabase()
+    const { data } = await supabase
+      .from('blocks')
+      .select('*')
+      .limit(1)
+      .single()
+
+    if (data) {
+      return {
+        identidad: data.identidad?.content || DEFAULT_BLOCKS.identidad,
+        negocio: data.negocio?.content || DEFAULT_BLOCKS.negocio,
+        calificacion: data.calificacion?.content || DEFAULT_BLOCKS.calificacion,
+        ejemplos: data.ejemplos?.content || DEFAULT_BLOCKS.ejemplos,
+      }
+    }
+  } catch (e) {
+    console.log('Usando bloques por defecto')
+  }
+  return DEFAULT_BLOCKS
+}
+
+async function getOrCreateLead(supabase: any, igUserId: string) {
+  // Buscar lead existente
+  const { data: existing } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('ig_user_id', igUserId)
+    .single()
+
+  if (existing) return existing
+
+  // Crear nuevo lead
+  const { data: newLead } = await supabase
+    .from('leads')
+    .insert({
+      ig_user_id: igUserId,
+      status: 'new',
+    })
+    .select()
+    .single()
+
+  return newLead
+}
+
+async function saveMessage(supabase: any, leadId: string, role: 'user' | 'assistant', content: string, igMessageId?: string) {
+  await supabase.from('messages').insert({
+    lead_id: leadId,
+    role,
+    content,
+    ig_message_id: igMessageId || null,
+  })
 }
 
 // GET — verificación del webhook
@@ -88,7 +151,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     console.log('WEBHOOK BODY:', JSON.stringify(body, null, 2))
-    
+
     const entry = body.entry?.[0]
     const messaging = entry?.messaging?.[0]
 
@@ -96,27 +159,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ status: 'no messaging' })
     }
 
-    // Ignorar cualquier mensaje que no sea del lead
+    // Ignorar echos
     if (messaging.message?.is_echo) {
       return NextResponse.json({ status: 'echo ignored' })
     }
 
-    // Ignorar si el sender es la propia cuenta
+    // Ignorar reads y deliveries (sin mensaje)
+    if (!messaging.message) {
+      return NextResponse.json({ status: 'no message ignored' })
+    }
+
     const senderId = messaging.sender?.id
-    const recipientId = messaging.recipient?.id
-    
+
+    // Ignorar mensajes propios
     if (senderId === '17841442428617540') {
       return NextResponse.json({ status: 'own message ignored' })
     }
 
     const messageText = messaging.message?.text
+    const messageId = messaging.message?.mid
 
-    // Ignorar mensajes sin texto
-    // Ignorar mensajes sin texto (reactions, reads, etc.)
+    // Ignorar mensajes sin texto (fotos, audios, etc.)
     if (!messageText) {
       return NextResponse.json({ status: 'no text ignored' })
     }
 
+    // Guardar en Supabase
+    const supabase = getSupabase()
+    const lead = await getOrCreateLead(supabase, senderId)
+
+    if (lead) {
+      await saveMessage(supabase, lead.id, 'user', messageText, messageId)
+    }
+
+    // Cargar historial de conversación
     if (!conversationHistory[senderId]) {
       conversationHistory[senderId] = []
     }
@@ -126,7 +202,9 @@ export async function POST(request: Request) {
       content: messageText
     })
 
-    const systemPrompt = buildSystemPrompt(DEFAULT_BLOCKS)
+    // Obtener bloques desde Supabase (o defecto)
+    const blocks = await getBlocks()
+    const systemPrompt = buildSystemPrompt(blocks)
     const aiResponse = await getAIResponse(systemPrompt, conversationHistory[senderId])
 
     conversationHistory[senderId].push({
@@ -134,8 +212,12 @@ export async function POST(request: Request) {
       content: aiResponse
     })
 
-    await sendInstagramMessage(senderId, aiResponse)
+    // Guardar respuesta en Supabase
+    if (lead) {
+      await saveMessage(supabase, lead.id, 'assistant', aiResponse)
+    }
 
+    await sendInstagramMessage(senderId, aiResponse)
     console.log(`✅ Respondido a ${senderId}: ${aiResponse}`)
 
     return NextResponse.json({ status: 'ok' })
