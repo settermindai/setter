@@ -112,9 +112,9 @@ export async function POST(request: Request) {
     const messageText = messaging.message?.text
 
     // Ignorar mensajes sin texto
+    // Ignorar mensajes sin texto (reactions, reads, etc.)
     if (!messageText) {
-      await sendInstagramMessage(senderId, "disculpa pero ahora no puedo ver eso, estoy en el coche — me lo cuentas por aquí")
-      return NextResponse.json({ status: 'ok' })
+      return NextResponse.json({ status: 'no text ignored' })
     }
 
     if (!conversationHistory[senderId]) {
