@@ -95,42 +95,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ status: 'no messaging' })
     }
 
+    // Ignorar cualquier mensaje que no sea del lead
+    if (messaging.message?.is_echo) {
+      return NextResponse.json({ status: 'echo ignored' })
+    }
+
+    // Ignorar si el sender es la propia cuenta
     const senderId = messaging.sender?.id
+    const recipientId = messaging.recipient?.id
+    
+    if (senderId === '17841442428617540') {
+      return NextResponse.json({ status: 'own message ignored' })
+    }
+
     const messageText = messaging.message?.text
 
-    // Ignorar mensajes sin texto (fotos, audios, etc.)
+    // Ignorar mensajes sin texto
     if (!messageText) {
       await sendInstagramMessage(senderId, "disculpa pero ahora no puedo ver eso, estoy en el coche — me lo cuentas por aquí")
       return NextResponse.json({ status: 'ok' })
     }
 
-    // Ignorar mensajes propios (eco)
-    if (messaging.message?.is_echo) {
-      return NextResponse.json({ status: 'echo ignored' })
-    }
-
-    // Recuperar o iniciar historial del lead
     if (!conversationHistory[senderId]) {
       conversationHistory[senderId] = []
     }
 
-    // Añadir mensaje del lead al historial
     conversationHistory[senderId].push({
       role: 'user',
       content: messageText
     })
 
-    // Construir prompt y obtener respuesta de la IA
     const systemPrompt = buildSystemPrompt(DEFAULT_BLOCKS)
     const aiResponse = await getAIResponse(systemPrompt, conversationHistory[senderId])
 
-    // Añadir respuesta de la IA al historial
     conversationHistory[senderId].push({
       role: 'assistant',
       content: aiResponse
     })
 
-    // Enviar respuesta por Instagram
     await sendInstagramMessage(senderId, aiResponse)
 
     console.log(`✅ Respondido a ${senderId}: ${aiResponse}`)
