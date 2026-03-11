@@ -29,5 +29,17 @@ export async function getAIResponse(
     throw new Error('Error llamando a la IA')
   }
 
-  return data.content[0].text
+  const raw = data.content[0].text
+
+  try {
+    const cleaned = raw.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(cleaned)
+    if (parsed.messages && Array.isArray(parsed.messages)) {
+      return parsed.messages.join('|||')
+    }
+  } catch (e) {
+    // Si no es JSON válido, devolver tal cual
+  }
+
+  return raw
 }

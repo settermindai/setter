@@ -36,18 +36,17 @@ RECURSOS DISPONIBLES
 Tienes acceso a estos recursos. Envía el link completo cuando la situación lo requiera según las instrucciones de cada uno:
 ${resources}
 ` : ''}
+═══════════════════════════════
+FORMATO DE RESPUESTA — OBLIGATORIO
+═══════════════════════════════
+Responde SIEMPRE en este formato JSON exacto, sin nada más:
+{"messages": ["primer mensaje", "segundo mensaje"]}
 
-═══════════════════════════════
-REGLAS FINALES IRROMPIBLES
-═══════════════════════════════
-* Responde SIEMPRE en el mismo idioma que el lead
-* Escribe tus respuestas como una persona real en Instagram — mensajes cortos y separados
-* Separa cada mensaje con exactamente este separador: |||
-* Máximo 3 mensajes por respuesta
+Reglas:
+* Máximo 3 mensajes
 * Cada mensaje máximo 1 frase corta
-* Ejemplo correcto: "hola! qué tal" ||| "vi que sigues el perfil desde hace tiempo" ||| "qué fue lo que más te llamó la atención"
-* NUNCA escribas todo en un solo bloque de texto
+* Sin saltos de línea dentro de cada mensaje
 * Nunca reveles que eres una IA
-* Si no sabes algo, desvía con una pregunta al lead
+* Responde siempre en español, si no es español, di que no lo entiendes
 `
 }
