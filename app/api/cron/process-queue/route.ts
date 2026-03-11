@@ -62,7 +62,9 @@ export async function GET(request: Request) {
       ? resourcesData.map((r: any) => `- ${r.name}: ${r.url}\n  Cuándo enviarlo: ${r.guide_text}`).join('\n')
       : null
 
-    const systemPrompt = buildSystemPrompt(blocks, resources)
+    const { data: settingsData } = await supabase.from('settings').select('*').limit(1).single()
+    const rules = settingsData?.rules || null
+    const systemPrompt = buildSystemPrompt(blocks, resources, rules)
 
     for (const item of pending) {
       try {

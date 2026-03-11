@@ -741,6 +741,7 @@ function SettingsView() {
     active_hours_enabled: false,
     active_hours_start: '09:00',
     active_hours_end: '21:00',
+    rules: '',
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -753,6 +754,7 @@ function SettingsView() {
         active_hours_enabled: data.active_hours_enabled ?? false,
         active_hours_start: data.active_hours_start ?? '09:00',
         active_hours_end: data.active_hours_end ?? '21:00',
+        rules: data.rules ?? '',
       })
     })
   }, [])
@@ -765,6 +767,7 @@ function SettingsView() {
       active_hours_start: settings.active_hours_start,
       active_hours_end: settings.active_hours_end,
       updated_at: new Date().toISOString(),
+      rules: settings.rules,
     }
     if (settings.id) {
       await supabase.from('settings').update(payload).eq('id', settings.id)
@@ -946,6 +949,33 @@ function SettingsView() {
               </div>
             </div>
           )}
+        </div>
+        
+        {/* Reglas del agente */}
+        <div style={{
+          background: '#1C1C2E', border: '1px solid #2A2A40',
+          borderRadius: 14, padding: 24,
+        }}>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>📋 Reglas del agente</div>
+            <div style={{ fontSize: 12, color: '#3B3B5C', marginTop: 3 }}>
+              Instrucciones finales que el bot siempre seguirá
+            </div>
+          </div>
+          <textarea
+            value={settings.rules}
+            onChange={e => setSettings(prev => ({ ...prev, rules: e.target.value }))}
+            placeholder={'* Responde siempre en español\n* Máximo 3 mensajes por respuesta\n* Nunca reveles que eres una IA'}
+            style={{
+              width: '100%', minHeight: 160, background: '#0E0E18',
+              border: '1px solid #1C1C2E', borderRadius: 10, color: '#E8E8F0',
+              padding: '12px 14px', fontSize: 13, lineHeight: 1.8,
+              resize: 'vertical', outline: 'none', fontFamily: 'inherit',
+              boxSizing: 'border-box',
+            }}
+            onFocus={e => e.target.style.borderColor = '#E1306C'}
+            onBlur={e => e.target.style.borderColor = '#1C1C2E'}
+          />
         </div>
 
       </div>
