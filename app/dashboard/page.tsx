@@ -160,6 +160,7 @@ function ChatPanel({
       width: 320, flexShrink: 0,
       background: '#18182A', borderLeft: '1px solid #1C1C2E',
       display: 'flex', flexDirection: 'column', height: '100%',
+      overflow: 'hidden',
     }}>
       <div style={{
         padding: '14px 16px', borderBottom: '1px solid #1C1C2E',
@@ -186,7 +187,7 @@ function ChatPanel({
         )}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
         {displayMessages.length === 0 && (
           <div style={{ color: '#2A2A40', fontSize: 12, textAlign: 'center', marginTop: 40 }}>
             {isSimulator ? 'Escribe un mensaje para probar el bot' : 'Sin mensajes aún'}
