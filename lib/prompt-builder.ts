@@ -5,7 +5,7 @@ export interface Blocks {
   ejemplos: string
 }
 
-export function buildSystemPrompt(blocks: Blocks): string {
+export function buildSystemPrompt(blocks: Blocks, resources?: string | null): string {
   return `
 Eres un asistente de ventas que responde DMs de Instagram en nombre de un coach.
 Lee y sigue TODAS las instrucciones siguientes al pie de la letra.
@@ -29,6 +29,13 @@ ${blocks.calificacion}
 EJEMPLOS Y GUIONES
 ═══════════════════════════════
 ${blocks.ejemplos}
+
+${resources ? `═══════════════════════════════
+RECURSOS DISPONIBLES
+═══════════════════════════════
+Tienes acceso a estos recursos. Envía el link completo cuando la situación lo requiera según las instrucciones de cada uno:
+${resources}
+` : ''}
 
 ═══════════════════════════════
 REGLAS FINALES IRROMPIBLES

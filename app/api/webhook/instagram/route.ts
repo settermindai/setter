@@ -101,6 +101,19 @@ async function getBlocks() {
   return DEFAULT_BLOCKS
 }
 
+async function getResources() {
+  try {
+    const supabase = getSupabase()
+    const { data } = await supabase.from('resources').select('*')
+    if (data && data.length > 0) {
+      return data.map((r: any) => `- ${r.name}: ${r.url}\n  Cuándo enviarlo: ${r.guide_text}`).join('\n')
+    }
+  } catch (e) {
+    console.log('Sin recursos')
+  }
+  return null
+}
+
 async function getOrCreateLead(supabase: any, igUserId: string) {
   // Buscar lead existente
   const { data: existing } = await supabase
@@ -204,7 +217,8 @@ export async function POST(request: Request) {
 
     // Obtener bloques desde Supabase (o defecto)
     const blocks = await getBlocks()
-    const systemPrompt = buildSystemPrompt(blocks)
+    const resources = await getResources()
+    const systemPrompt = buildSystemPrompt(blocks, resources)
     const aiResponse = await getAIResponse(systemPrompt, conversationHistory[senderId])
 
     conversationHistory[senderId].push({
