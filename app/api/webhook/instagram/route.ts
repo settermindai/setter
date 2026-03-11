@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server'
-import { buildSystemPrompt } from '@/lib/prompt-builder'
-import { getAIResponse } from '@/lib/ai'
 import { createClient } from '@supabase/supabase-js'
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN
@@ -11,21 +9,6 @@ function getSupabase() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
-}
-
-const conversationHistory: Record<string, Array<{ role: 'user' | 'assistant', content: string }>> = {}
-
-async function sendInstagramMessage(recipientId: string, message: string) {
-  const response = await fetch(`https://graph.instagram.com/v21.0/me/messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      recipient: { id: recipientId },
-      message: { text: message },
-      access_token: process.env.INSTAGRAM_ACCESS_TOKEN,
-    })
-  })
-  return response.json()
 }
 
 async function getSettings() {
@@ -42,42 +25,11 @@ async function getSettings() {
   }
 }
 
-async function getBlocks() {
-  try {
-    const supabase = getSupabase()
-    const { data } = await supabase.from('blocks').select('*').limit(1).single()
-    if (data) return {
-      identidad: data.identidad?.content || '',
-      negocio: data.negocio?.content || '',
-      calificacion: data.calificacion?.content || '',
-      ejemplos: data.ejemplos?.content || '',
-    }
-  } catch (e) {}
-  return { identidad: '', negocio: '', calificacion: '', ejemplos: '' }
-}
-
-async function getResources() {
-  try {
-    const supabase = getSupabase()
-    const { data } = await supabase.from('resources').select('*')
-    if (data && data.length > 0) {
-      return data.map((r: any) => `- ${r.name}: ${r.url}\n  Cuándo enviarlo: ${r.guide_text}`).join('\n')
-    }
-  } catch (e) {}
-  return null
-}
-
 async function getOrCreateLead(supabase: any, igUserId: string) {
   const { data: existing } = await supabase.from('leads').select('*').eq('ig_user_id', igUserId).single()
   if (existing) return existing
   const { data: newLead } = await supabase.from('leads').insert({ ig_user_id: igUserId, status: 'new' }).select().single()
   return newLead
-}
-
-async function saveMessage(supabase: any, leadId: string, role: 'user' | 'assistant', content: string, igMessageId?: string) {
-  await supabase.from('messages').insert({
-    lead_id: leadId, role, content, ig_message_id: igMessageId || null,
-  })
 }
 
 function isWithinActiveHours(start: string, end: string): boolean {
@@ -97,10 +49,6 @@ function getNextActiveTime(start: string): Date {
   next.setHours(sh, sm, 0, 0)
   if (next <= now) next.setDate(next.getDate() + 1)
   return next
-}
-
-function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 export async function GET(request: Request) {
@@ -134,50 +82,37 @@ export async function POST(request: Request) {
     if (!messageText) return NextResponse.json({ status: 'no text ignored' })
 
     const supabase = getSupabase()
+
+    // Guardar lead y mensaje
     const lead = await getOrCreateLead(supabase, senderId)
-    if (lead) await saveMessage(supabase, lead.id, 'user', messageText, messageId)
+    if (lead) {
+      await supabase.from('messages').insert({
+        lead_id: lead.id, role: 'user', content: messageText, ig_message_id: messageId || null,
+      })
+    }
 
-    // Cargar configuración
+    // Calcular cuándo responder
     const settings = await getSettings()
+    let scheduledFor: Date
 
-    // Comprobar horario activo
-    if (settings.active_hours_enabled) {
-      const withinHours = isWithinActiveHours(settings.active_hours_start, settings.active_hours_end)
-      if (!withinHours) {
-        // Encolar para cuando empiece el horario
-        const scheduledFor = getNextActiveTime(settings.active_hours_start)
-        await supabase.from('message_queue').insert({
-          sender_id: senderId,
-          message_text: messageText,
-          message_id: messageId,
-          scheduled_for: scheduledFor.toISOString(),
-        })
-        console.log(`⏳ Mensaje encolado para ${scheduledFor.toISOString()}`)
-        return NextResponse.json({ status: 'queued' })
-      }
+    if (settings.active_hours_enabled && !isWithinActiveHours(settings.active_hours_start, settings.active_hours_end)) {
+      // Fuera de horario → encolar para el inicio del próximo horario
+      scheduledFor = getNextActiveTime(settings.active_hours_start)
+      console.log(`⏳ Fuera de horario — encolado para ${scheduledFor.toISOString()}`)
+    } else {
+      // Dentro de horario → encolar con delay
+      scheduledFor = new Date(Date.now() + (settings.response_delay_seconds * 1000))
+      console.log(`⏱ Encolado con delay ${settings.response_delay_seconds}s`)
     }
 
-    // Aplicar delay
-    if (settings.response_delay_seconds > 0) {
-      await sleep(settings.response_delay_seconds * 1000)
-    }
+    await supabase.from('message_queue').insert({
+      sender_id: senderId,
+      message_text: messageText,
+      message_id: messageId,
+      scheduled_for: scheduledFor.toISOString(),
+    })
 
-    // Generar respuesta IA
-    if (!conversationHistory[senderId]) conversationHistory[senderId] = []
-    conversationHistory[senderId].push({ role: 'user', content: messageText })
-
-    const blocks = await getBlocks()
-    const resources = await getResources()
-    const systemPrompt = buildSystemPrompt(blocks, resources)
-    const aiResponse = await getAIResponse(systemPrompt, conversationHistory[senderId])
-
-    conversationHistory[senderId].push({ role: 'assistant', content: aiResponse })
-    if (lead) await saveMessage(supabase, lead.id, 'assistant', aiResponse)
-
-    await sendInstagramMessage(senderId, aiResponse)
-    console.log(`✅ Respondido a ${senderId}: ${aiResponse}`)
-
-    return NextResponse.json({ status: 'ok' })
+    return NextResponse.json({ status: 'queued' })
 
   } catch (error) {
     console.error('Error en webhook:', error)
