@@ -109,4 +109,4 @@ export async function GET(request: Request) {
     console.error('Error en cron:', error)
     return NextResponse.json({ status: 'error' }, { status: 500 })
   }
-}
+}// Wed Mar 11 08:47:08 CET 2026
