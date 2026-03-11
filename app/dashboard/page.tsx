@@ -366,54 +366,125 @@ function LeadsView({ leads, onSelectLead, selectedLead, messages, t }: {
   return (
     <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        {/* Header */}
         <div style={{ padding: '16px 24px', borderBottom: `1px solid ${t.border}`, flexShrink: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>Leads</div>
           <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>{leads.length} conversaciones</div>
         </div>
+
+        {/* Cabecera tabla */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '2fr 1.2fr 2fr 1fr',
+          padding: '10px 24px', borderBottom: `1px solid ${t.border}`,
+          fontSize: 10, color: t.textMuted, fontWeight: 700, letterSpacing: 1.2,
+          textTransform: 'uppercase', background: t.surface2, flexShrink: 0,
+        }}>
+          <span>Información</span>
+          <span>Estado</span>
+          <span>Último mensaje</span>
+          <span>Score</span>
+        </div>
+
+        {/* Filas */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 80px 130px 70px', padding: '10px 24px', borderBottom: `1px solid ${t.border}`, fontSize: 10, color: t.textMuted, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', background: t.surface2 }}>
-            <span>Lead</span><span>Último mensaje</span><span>Score</span><span>Agenda</span><span>Hora</span>
-          </div>
-          {leads.length === 0 && <div style={{ padding: 40, color: t.textFaint, fontSize: 13, textAlign: 'center' }}>Cuando alguien escriba a tu Instagram, aparecerá aquí.</div>}
+          {leads.length === 0 && (
+            <div style={{ padding: 40, color: t.textFaint, fontSize: 13, textAlign: 'center' }}>
+              Cuando alguien escriba a tu Instagram, aparecerá aquí.
+            </div>
+          )}
           {leads.map(lead => {
             const score = SCORE_CONFIG[lead.score || 'low'] || SCORE_CONFIG['low']
             const isSelected = selectedLead?.id === lead.id
+
+            const estadoConfig: Record<string, { label: string; color: string; bg: string }> = {
+              booked:  { label: 'Cliente',  color: '#10B981', bg: '#10B98120' },
+              sent:    { label: 'Hablando', color: '#FBBF24', bg: '#FBBF2420' },
+              new:     { label: 'Lead',     color: '#6366F1', bg: '#6366F120' },
+            }
+            const estado = estadoConfig[lead.status || 'new'] || estadoConfig['new']
+
             return (
               <div key={lead.id} onClick={() => onSelectLead(isSelected ? null : lead)} style={{
-                display: 'grid', gridTemplateColumns: '2fr 2fr 80px 130px 70px',
-                padding: '12px 24px', borderBottom: `1px solid ${t.border}`,
+                display: 'grid', gridTemplateColumns: '2fr 1.2fr 2fr 1fr',
+                padding: '14px 24px', borderBottom: `1px solid ${t.border}`,
                 cursor: 'pointer', background: isSelected ? t.surface2 : 'transparent',
                 transition: 'background 0.15s', alignItems: 'center',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: t.accentGradPink, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+              }}
+                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = t.surface2 }}
+                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
+              >
+                {/* Información */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                    background: t.accentGradPink,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 15, fontWeight: 700, color: 'white',
+                  }}>
                     {(lead.username || lead.ig_user_id)?.[0]?.toUpperCase() || '?'}
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: t.text }}>{lead.username || lead.ig_user_id}</div>
-                    <div style={{ fontSize: 10, color: t.textMuted }}>ID: {lead.ig_user_id}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>
+                      {lead.full_name || lead.username || 'Sin nombre'}
+                    </div>
+                    <div style={{ fontSize: 11, color: t.textMuted, marginTop: 1 }}>
+                      @{lead.username || lead.ig_user_id}
+                    </div>
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: t.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>{lead.summary || '—'}</div>
+
+                {/* Estado */}
                 <div>
-                  <select value={lead.score || 'low'} onChange={async e => { e.stopPropagation(); await supabase.from('leads').update({ score: e.target.value }).eq('id', lead.id) }} onClick={e => e.stopPropagation()}
-                    style={{ background: score.bg, border: `1px solid ${score.color}40`, color: score.color, padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', outline: 'none' }}>
-                    <option value="high">HIGH</option><option value="medium">MED</option><option value="low">LOW</option>
+                  <select
+                    value={lead.status || 'new'}
+                    onChange={async e => { e.stopPropagation(); await supabase.from('leads').update({ status: e.target.value }).eq('id', lead.id) }}
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      background: estado.bg, border: `1px solid ${estado.color}50`,
+                      color: estado.color, padding: '5px 10px', borderRadius: 8,
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer', outline: 'none',
+                    }}
+                  >
+                    <option value="new">Lead</option>
+                    <option value="sent">Hablando</option>
+                    <option value="booked">Cliente</option>
                   </select>
                 </div>
+
+                {/* Último mensaje */}
+                <div style={{
+                  fontSize: 12, color: t.textMuted, paddingRight: 16,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {lead.summary || '—'}
+                </div>
+
+                {/* Score */}
                 <div>
-                  <select value={lead.status || 'new'} onChange={async e => { e.stopPropagation(); await supabase.from('leads').update({ status: e.target.value }).eq('id', lead.id) }} onClick={e => e.stopPropagation()}
-                    style={{ background: lead.status === 'booked' ? '#10B98120' : t.surface2, border: `1px solid ${lead.status === 'booked' ? '#10B981' : t.border}`, color: lead.status === 'booked' ? '#10B981' : t.textMuted, padding: '4px 8px', borderRadius: 6, fontSize: 11, cursor: 'pointer', outline: 'none' }}>
-                    <option value="new">Pendiente</option><option value="sent">Enviada</option><option value="booked">✅ Reservado</option>
+                  <select
+                    value={lead.score || 'low'}
+                    onChange={async e => { e.stopPropagation(); await supabase.from('leads').update({ score: e.target.value }).eq('id', lead.id) }}
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      background: score.bg, border: `1px solid ${score.color}50`,
+                      color: score.color, padding: '5px 10px', borderRadius: 8,
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer', outline: 'none',
+                    }}
+                  >
+                    <option value="high">HIGH</option>
+                    <option value="medium">MEDIUM</option>
+                    <option value="low">LOW</option>
                   </select>
                 </div>
-                <div style={{ fontSize: 11, color: t.textFaint }}>{formatRelativeTime(lead.updated_at || lead.created_at)}</div>
               </div>
             )
           })}
         </div>
       </div>
-      {selectedLead && <ChatPanel lead={selectedLead} messages={messages} onClose={() => onSelectLead(null)} t={t} />}
+
+      {selectedLead && (
+        <ChatPanel lead={selectedLead} messages={messages} onClose={() => onSelectLead(null)} t={t} />
+      )}
     </div>
   )
 }
