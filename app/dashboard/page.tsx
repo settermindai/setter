@@ -222,7 +222,7 @@ function ChatPanel({
       </div>
 
       {isSimulator && (
-        <div style={{ padding: '12px', borderTop: '1px solid #1C1C2E', display: 'flex', gap: 8 }}>
+        <div style={{ padding: '12px', borderTop: '1px solid #1C1C2E', display: 'flex', gap: 8, flexShrink: 0 }}>
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
