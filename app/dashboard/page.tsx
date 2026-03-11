@@ -417,7 +417,7 @@ function LeadsView({ leads, onSelectLead, selectedLead, messages }: {
 }) {
   return (
     <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid #1C1C2E' }}>
           <div style={{ fontSize: 18, fontWeight: 700 }}>Leads</div>
           <div style={{ fontSize: 12, color: '#3B3B5C', marginTop: 2 }}>{leads.length} conversaciones</div>
@@ -583,7 +583,7 @@ function LinksView() {
         </button>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
         {/* Tabla */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {/* Header tabla */}
