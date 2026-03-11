@@ -97,7 +97,7 @@ export async function GET(request: Request) {
         const parts = aiResponse.split('|||').map((p: string) => p.trim()).filter(Boolean)
         for (const part of parts) {
           await sendInstagramMessage(item.sender_id, part)
-          await new Promise(resolve => setTimeout(resolve, 1500))
+          await new Promise(resolve => setTimeout(resolve, 5000))
         }
         console.log(`✅ Cola procesada para ${item.sender_id}`)
 
