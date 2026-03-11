@@ -155,12 +155,12 @@ function ChatPanel({
   return (
     <div style={{
       width: 320, flexShrink: 0,
-      background: '#0C0C14', borderLeft: '1px solid #1C1C2E',
+      background: '#18182A', borderLeft: '1px solid #1C1C2E',
       display: 'flex', flexDirection: 'column', height: '100%',
     }}>
       <div style={{
         padding: '14px 16px', borderBottom: '1px solid #1C1C2E',
-        display: 'flex', alignItems: 'center', gap: 10, background: '#0E0E18',
+        display: 'flex', alignItems: 'center', gap: 10, background: '#1C1C2E',
       }}>
         <div style={{
           width: 32, height: 32, borderRadius: '50%',
@@ -241,19 +241,19 @@ function ChatPanel({
 }
 
 function AvatarView() {
-  const [blocks, setBlocks] = useState<Blocks>(DEFAULT_BLOCKS)
+  const [blocks, setBlocks] = useState<Blocks>({ identidad: '', negocio: '', calificacion: '', ejemplos: '' })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     supabase.from('blocks').select('*').limit(1).single().then(({ data }) => {
-      if (data) setBlocks({
-        id: data.id,
-        identidad: data.identidad?.content || DEFAULT_BLOCKS.identidad,
-        negocio: data.negocio?.content || DEFAULT_BLOCKS.negocio,
-        calificacion: data.calificacion?.content || DEFAULT_BLOCKS.calificacion,
-        ejemplos: data.ejemplos?.content || DEFAULT_BLOCKS.ejemplos,
-      })
+    if (data) setBlocks({
+      id: data.id,
+      identidad: data.identidad?.content || '',
+      negocio: data.negocio?.content || '',
+      calificacion: data.calificacion?.content || '',
+      ejemplos: data.ejemplos?.content || '',
+    })
     })
   }, [])
 
@@ -295,7 +295,7 @@ function AvatarView() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {AVATAR_BLOCKS.map(block => (
           <div key={block.key} style={{
-            background: '#0E0E18', border: '1px solid #1C1C2E',
+            background: '#1C1C2E', border: '1px solid #1C1C2E',
             borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 10,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -309,7 +309,7 @@ function AvatarView() {
               value={blocks[block.key as keyof Blocks] as string}
               onChange={e => setBlocks(prev => ({ ...prev, [block.key]: e.target.value }))}
               style={{
-                height: 200, background: '#0A0A12', border: '1px solid #1C1C2E',
+                height: 200, background: '#161624', border: '1px solid #1C1C2E',
                 borderRadius: 10, color: '#E8E8F0', fontSize: 11, lineHeight: 1.8,
                 padding: 14, resize: 'none', outline: 'none',
                 fontFamily: "'SF Mono', 'Fira Code', monospace",
@@ -355,7 +355,7 @@ function AgenteView({ leads }: { leads: Lead[] }) {
                 { label: 'Hoy',         value: newToday,   icon: '✨', color: '#10B981' },
               ].map(stat => (
                 <div key={stat.label} style={{
-                  background: '#0E0E18', border: '1px solid #1C1C2E', borderRadius: 14, padding: '20px 24px',
+                  background: '#1C1C2E', border: '1px solid #1C1C2E', borderRadius: 14, padding: '20px 24px',
                 }}>
                   <div style={{ fontSize: 24, marginBottom: 8 }}>{stat.icon}</div>
                   <div style={{ fontSize: 32, fontWeight: 700, color: stat.color }}>{stat.value}</div>
@@ -364,16 +364,16 @@ function AgenteView({ leads }: { leads: Lead[] }) {
               ))}
             </div>
 
-            <div style={{ background: '#0E0E18', border: '1px solid #1C1C2E', borderRadius: 14, padding: 20 }}>
+            <div style={{ background: '#1C1C2E', border: '1px solid #1C1C2E', borderRadius: 14, padding: 20 }}>
               <div style={{ fontSize: 11, color: '#3B3B5C', fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 16 }}>
                 Últimos leads
               </div>
               {leads.slice(0, 6).map(lead => {
-                const score = SCORE_CONFIG[lead.score || 'low']
+                const score = SCORE_CONFIG[lead.score || 'low'] || SCORE_CONFIG['low']
                 return (
                   <div key={lead.id} style={{
                     display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 0', borderBottom: '1px solid #13131F',
+                    padding: '10px 0', borderBottom: '1px solid #1E1E2E',
                   }}>
                     <div style={{
                       width: 32, height: 32, borderRadius: '50%',
@@ -427,7 +427,7 @@ function LeadsView({ leads, onSelectLead, selectedLead, messages }: {
             display: 'grid', gridTemplateColumns: '2fr 2fr 80px 130px 70px',
             padding: '10px 24px', borderBottom: '1px solid #1C1C2E',
             fontSize: 10, color: '#3B3B5C', fontWeight: 600, letterSpacing: 1,
-            textTransform: 'uppercase', background: '#0A0A12',
+            textTransform: 'uppercase', background: '#161624',
           }}>
             <span>Lead</span><span>Último mensaje</span><span>Score</span><span>Agenda</span><span>Hora</span>
           </div>
@@ -439,12 +439,12 @@ function LeadsView({ leads, onSelectLead, selectedLead, messages }: {
           )}
 
           {leads.map(lead => {
-            const score = SCORE_CONFIG[lead.score || 'low']
+            const score = SCORE_CONFIG[lead.score || 'low'] || SCORE_CONFIG['low']
             const isSelected = selectedLead?.id === lead.id
             return (
               <div key={lead.id} onClick={() => onSelectLead(isSelected ? null : lead)} style={{
                 display: 'grid', gridTemplateColumns: '2fr 2fr 80px 130px 70px',
-                padding: '12px 24px', borderBottom: '1px solid #13131F',
+                padding: '12px 24px', borderBottom: '1px solid #1E1E2E',
                 cursor: 'pointer', background: isSelected ? '#12121E' : 'transparent',
                 transition: 'background 0.15s', alignItems: 'center',
               }}>
@@ -553,13 +553,13 @@ export default function Dashboard() {
 
   return (
     <div style={{
-      display: 'flex', height: '100vh', background: '#080810',
+      display: 'flex', height: '100vh', background: '#131320',
       color: '#E8E8F0', fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
       overflow: 'hidden',
     }}>
       {/* NAV */}
       <div style={{
-        width: 200, background: '#0A0A12', borderRight: '1px solid #1C1C2E',
+        width: 200, background: '#161624', borderRight: '1px solid #1C1C2E',
         display: 'flex', flexDirection: 'column', padding: '20px 12px', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 24 }}>
