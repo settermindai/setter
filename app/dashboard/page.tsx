@@ -15,6 +15,10 @@ type Lead = {
   full_name: string | null
   status: string | null
   score: string | null
+  summary: string | null
+  pain_points: string | null
+  desires: string | null
+  objections: string | null
   created_at: string
   updated_at: string
 }
@@ -160,12 +164,13 @@ function ChatPanel({
       width: 320, flexShrink: 0,
       background: '#18182A', borderLeft: '1px solid #1C1C2E',
       display: 'flex', flexDirection: 'column',
-      overflow: 'hidden',
-      alignSelf: 'stretch',
+      overflow: 'hidden', alignSelf: 'stretch',
     }}>
+      {/* Header */}
       <div style={{
         padding: '14px 16px', borderBottom: '1px solid #1C1C2E',
         display: 'flex', alignItems: 'center', gap: 10, background: '#1C1C2E',
+        flexShrink: 0,
       }}>
         <div style={{
           width: 32, height: 32, borderRadius: '50%',
@@ -188,6 +193,59 @@ function ChatPanel({
         )}
       </div>
 
+      {/* Panel info lead */}
+      {!isSimulator && lead && (
+        <div style={{
+          padding: '12px 16px', borderBottom: '1px solid #1C1C2E',
+          background: '#161624', display: 'flex', flexDirection: 'column', gap: 8,
+          flexShrink: 0, overflowY: 'auto', maxHeight: 220,
+        }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {(() => {
+              const score = SCORE_CONFIG[lead.score || 'low'] || SCORE_CONFIG['low']
+              return (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, color: score.color,
+                  background: score.bg, padding: '3px 8px', borderRadius: 6,
+                }}>{score.label}</span>
+              )
+            })()}
+            <span style={{
+              fontSize: 10, color: lead.status === 'booked' ? '#10B981' : '#6B7280',
+              background: lead.status === 'booked' ? '#10B98115' : '#6B728015',
+              padding: '3px 8px', borderRadius: 6, fontWeight: 600,
+            }}>
+              {lead.status === 'booked' ? '✅ Reservado' : lead.status === 'sent' ? '📤 Enviada' : '⏳ Pendiente'}
+            </span>
+          </div>
+          {lead.summary && (
+            <div>
+              <div style={{ fontSize: 9, color: '#3B3B5C', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>📝 Resumen</div>
+              <div style={{ fontSize: 11, color: '#8888AA', lineHeight: 1.5 }}>{lead.summary}</div>
+            </div>
+          )}
+          {lead.pain_points && (
+            <div>
+              <div style={{ fontSize: 9, color: '#3B3B5C', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>💔 Dolores</div>
+              <div style={{ fontSize: 11, color: '#8888AA', lineHeight: 1.5 }}>{lead.pain_points}</div>
+            </div>
+          )}
+          {lead.desires && (
+            <div>
+              <div style={{ fontSize: 9, color: '#3B3B5C', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>✨ Deseos</div>
+              <div style={{ fontSize: 11, color: '#8888AA', lineHeight: 1.5 }}>{lead.desires}</div>
+            </div>
+          )}
+          {lead.objections && (
+            <div>
+              <div style={{ fontSize: 9, color: '#3B3B5C', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>🚧 Objeciones</div>
+              <div style={{ fontSize: 11, color: '#8888AA', lineHeight: 1.5 }}>{lead.objections}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mensajes */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
         {displayMessages.length === 0 && (
           <div style={{ color: '#2A2A40', fontSize: 12, textAlign: 'center', marginTop: 40 }}>
