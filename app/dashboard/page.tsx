@@ -510,6 +510,230 @@ function LeadsView({ leads, onSelectLead, selectedLead, messages }: {
   )
 }
 
+function LinksView() {
+  const [resources, setResources] = useState<Array<{
+    id: string
+    name: string
+    url: string
+    guide_text: string
+    created_at: string
+  }>>([])
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState({ name: '', url: '', guide_text: '' })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { loadResources() }, [])
+
+  async function loadResources() {
+    const { data } = await supabase.from('resources').select('*').order('created_at', { ascending: false })
+    if (data) setResources(data)
+  }
+
+  async function saveResource() {
+    if (!form.name.trim() || !form.url.trim()) return
+    setSaving(true)
+    if (editingId) {
+      await supabase.from('resources').update({
+        name: form.name, url: form.url, guide_text: form.guide_text
+      }).eq('id', editingId)
+    } else {
+      await supabase.from('resources').insert({
+        name: form.name, url: form.url, guide_text: form.guide_text
+      })
+    }
+    await loadResources()
+    setForm({ name: '', url: '', guide_text: '' })
+    setShowForm(false)
+    setEditingId(null)
+    setSaving(false)
+  }
+
+  function startEdit(r: typeof resources[0]) {
+    setForm({ name: r.name, url: r.url, guide_text: r.guide_text || '' })
+    setEditingId(r.id)
+    setShowForm(true)
+  }
+
+  async function deleteResource(id: string) {
+    await supabase.from('resources').delete().eq('id', id)
+    setResources(prev => prev.filter(r => r.id !== id))
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      {/* Header */}
+      <div style={{
+        padding: '16px 24px', borderBottom: '1px solid #1C1C2E',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>Recursos</div>
+          <div style={{ fontSize: 12, color: '#3B3B5C', marginTop: 2 }}>
+            El bot enviará estos links cuando lo considere necesario
+          </div>
+        </div>
+        <button onClick={() => { setForm({ name: '', url: '', guide_text: '' }); setEditingId(null); setShowForm(true) }} style={{
+          background: 'linear-gradient(135deg, #E1306C, #F77737)',
+          border: 'none', color: 'white', padding: '10px 20px',
+          borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+        }}>
+          + Añadir recurso
+        </button>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        {/* Tabla */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {/* Header tabla */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1.5fr 1.5fr 2fr 80px',
+            padding: '10px 24px', borderBottom: '1px solid #1C1C2E',
+            fontSize: 10, color: '#3B3B5C', fontWeight: 600,
+            letterSpacing: 1, textTransform: 'uppercase', background: '#141420',
+          }}>
+            <span>Nombre</span><span>Link</span><span>Texto guía IA</span><span></span>
+          </div>
+
+          {resources.length === 0 && (
+            <div style={{ padding: 40, color: '#2A2A40', fontSize: 13, textAlign: 'center' }}>
+              Añade tu primer recurso — lead magnets, reels, videos, etc.
+            </div>
+          )}
+
+          {resources.map(r => (
+            <div key={r.id} style={{
+              display: 'grid', gridTemplateColumns: '1.5fr 1.5fr 2fr 80px',
+              padding: '14px 24px', borderBottom: '1px solid #1E1E2E',
+              alignItems: 'start', transition: 'background 0.15s',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#18182A')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600, paddingRight: 16 }}>{r.name}</div>
+              <div style={{ paddingRight: 16 }}>
+                <a href={r.url} target="_blank" rel="noreferrer" style={{
+                  fontSize: 12, color: '#E1306C', textDecoration: 'none',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  display: 'block', maxWidth: 200,
+                }}>
+                  {r.url}
+                </a>
+              </div>
+              <div style={{
+                fontSize: 12, color: '#4B4B6B', lineHeight: 1.5,
+                paddingRight: 16, display: '-webkit-box',
+                WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+              }}>
+                {r.guide_text || '—'}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => startEdit(r)} style={{
+                  background: '#1C1C2E', border: '1px solid #2A2A45',
+                  color: '#E8E8F0', padding: '5px 10px', borderRadius: 7,
+                  fontSize: 11, cursor: 'pointer',
+                }}>✏️</button>
+                <button onClick={() => deleteResource(r.id)} style={{
+                  background: '#1C1C2E', border: '1px solid #2A2A45',
+                  color: '#E1306C', padding: '5px 10px', borderRadius: 7,
+                  fontSize: 11, cursor: 'pointer',
+                }}>🗑</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Panel formulario */}
+        {showForm && (
+          <div style={{
+            width: 360, flexShrink: 0, borderLeft: '1px solid #1C1C2E',
+            background: '#18182A', display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{
+              padding: '16px 20px', borderBottom: '1px solid #1C1C2E',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>
+                {editingId ? 'Editar recurso' : 'Nuevo recurso'}
+              </div>
+              <button onClick={() => setShowForm(false)} style={{
+                background: 'none', border: 'none', color: '#3B3B5C', cursor: 'pointer', fontSize: 18,
+              }}>✕</button>
+            </div>
+
+            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#3B3B5C', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Nombre del recurso
+                </div>
+                <input
+                  value={form.name}
+                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="Ej: Lead Magnet PDF, Reel transformación..."
+                  style={{
+                    width: '100%', background: '#0E0E18', border: '1px solid #1C1C2E',
+                    borderRadius: 10, color: '#E8E8F0', padding: '10px 14px',
+                    fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#E1306C'}
+                  onBlur={e => e.target.style.borderColor = '#1C1C2E'}
+                />
+              </div>
+
+              <div>
+                <div style={{ fontSize: 11, color: '#3B3B5C', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Link
+                </div>
+                <input
+                  value={form.url}
+                  onChange={e => setForm(p => ({ ...p, url: e.target.value }))}
+                  placeholder="https://..."
+                  style={{
+                    width: '100%', background: '#0E0E18', border: '1px solid #1C1C2E',
+                    borderRadius: 10, color: '#E8E8F0', padding: '10px 14px',
+                    fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#E1306C'}
+                  onBlur={e => e.target.style.borderColor = '#1C1C2E'}
+                />
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontSize: 11, color: '#3B3B5C', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Texto guía para la IA
+                </div>
+                <textarea
+                  value={form.guide_text}
+                  onChange={e => setForm(p => ({ ...p, guide_text: e.target.value }))}
+                  placeholder="Ej: Envía este PDF cuando el lead pida más información sobre nutrición o cuando mencione que no sabe por dónde empezar..."
+                  style={{
+                    flex: 1, minHeight: 140, background: '#0E0E18', border: '1px solid #1C1C2E',
+                    borderRadius: 10, color: '#E8E8F0', padding: '10px 14px',
+                    fontSize: 13, lineHeight: 1.6, resize: 'none', outline: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#E1306C'}
+                  onBlur={e => e.target.style.borderColor = '#1C1C2E'}
+                />
+              </div>
+
+              <button onClick={saveResource} disabled={saving || !form.name.trim() || !form.url.trim()} style={{
+                background: 'linear-gradient(135deg, #E1306C, #F77737)',
+                border: 'none', color: 'white', padding: '12px',
+                borderRadius: 10, fontSize: 14, fontWeight: 600,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: !form.name.trim() || !form.url.trim() ? 0.5 : 1,
+              }}>
+                {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Añadir recurso'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [activeNav, setActiveNav] = useState('agente')
   const [leads, setLeads] = useState<Lead[]>([])
@@ -609,7 +833,7 @@ export default function Dashboard() {
         {activeNav === 'home'     && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2A2A40', flexDirection: 'column', gap: 12 }}><div style={{ fontSize: 48 }}>⌂</div><div>Home — próximamente</div></div>}
         {activeNav === 'agente'   && <AgenteView leads={leads} />}
         {activeNav === 'leads'    && <LeadsView leads={leads} onSelectLead={setSelectedLead} selectedLead={selectedLead} messages={messages} />}
-        {activeNav === 'links'    && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2A2A40', flexDirection: 'column', gap: 12 }}><div style={{ fontSize: 48 }}>🔗</div><div>Links — próximamente</div></div>}
+        {activeNav === 'links'    && <LinksView />}
         {activeNav === 'settings' && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2A2A40', flexDirection: 'column', gap: 12 }}><div style={{ fontSize: 48 }}>⚙</div><div>Settings — próximamente</div></div>}
       </div>
     </div>
