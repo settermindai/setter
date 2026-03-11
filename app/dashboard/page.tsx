@@ -114,6 +114,7 @@ const THEMES = {
 const NAV_ITEMS = [
   { id: 'inicio',        icon: '⌂',  label: 'Inicio' },
   { id: 'dashboard',     icon: '📊', label: 'Dashboard' },
+  { id: 'leads',         icon: '👥', label: 'Leads' },
   { id: 'links',         icon: '🔗', label: 'Links' },
   { id: 'informes',      icon: '📈', label: 'Informes' },
   { id: 'agente',        icon: '⚡', label: 'Agente IA' },
