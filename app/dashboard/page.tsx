@@ -855,12 +855,25 @@ function SettingsView() {
                 cursor: 'pointer',
               }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: '#3B3B5C' }}>
-              <span>1 seg</span>
-              <span>1 min</span>
-              <span>5 min</span>
-              <span>15 min</span>
-              <span>30 min</span>
+            <div style={{ position: 'relative', height: 20, marginTop: 6 }}>
+              {[
+                { seconds: 1, label: '1s' },
+                { seconds: 30, label: '30s' },
+                { seconds: 60, label: '1m' },
+                { seconds: 300, label: '5m' },
+                { seconds: 900, label: '15m' },
+                { seconds: 1800, label: '30m' },
+              ].map(mark => (
+                <span key={mark.seconds} style={{
+                  position: 'absolute',
+                  left: `${secondsToSlider(mark.seconds)}%`,
+                  transform: 'translateX(-50%)',
+                  fontSize: 10,
+                  color: settings.response_delay_seconds === mark.seconds ? '#E1306C' : '#3B3B5C',
+                }}>
+                  {mark.label}
+                </span>
+              ))}
             </div>
           </div>
         </div>
