@@ -417,7 +417,7 @@ function LeadsView({ leads, onSelectLead, selectedLead, messages }: {
   messages: Message[]
 }) {
   return (
-    <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+    <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', height: 0 }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid #1C1C2E' }}>
           <div style={{ fontSize: 18, fontWeight: 700 }}>Leads</div>
