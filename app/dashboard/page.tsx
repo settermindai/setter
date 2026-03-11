@@ -734,6 +734,212 @@ function LinksView() {
   )
 }
 
+function SettingsView() {
+  const [settings, setSettings] = useState({
+    id: '',
+    response_delay_seconds: 5,
+    active_hours_enabled: false,
+    active_hours_start: '09:00',
+    active_hours_end: '21:00',
+  })
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    supabase.from('settings').select('*').limit(1).single().then(({ data }) => {
+      if (data) setSettings({
+        id: data.id,
+        response_delay_seconds: data.response_delay_seconds ?? 5,
+        active_hours_enabled: data.active_hours_enabled ?? false,
+        active_hours_start: data.active_hours_start ?? '09:00',
+        active_hours_end: data.active_hours_end ?? '21:00',
+      })
+    })
+  }, [])
+
+  async function saveSettings() {
+    setSaving(true)
+    const payload = {
+      response_delay_seconds: settings.response_delay_seconds,
+      active_hours_enabled: settings.active_hours_enabled,
+      active_hours_start: settings.active_hours_start,
+      active_hours_end: settings.active_hours_end,
+      updated_at: new Date().toISOString(),
+    }
+    if (settings.id) {
+      await supabase.from('settings').update(payload).eq('id', settings.id)
+    } else {
+      const { data } = await supabase.from('settings').insert(payload).select().single()
+      if (data) setSettings(prev => ({ ...prev, id: data.id }))
+    }
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  function formatDelay(seconds: number) {
+    if (seconds < 60) return `${seconds} seg`
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} min`
+    return `${Math.floor(seconds / 3600)}h`
+  }
+
+  // Escala logarítmica: 1s → 1800s (30min)
+  function sliderToSeconds(val: number) {
+    if (val === 0) return 1
+    return Math.round(Math.exp(val * Math.log(1800) / 100))
+  }
+
+  function secondsToSlider(seconds: number) {
+    if (seconds <= 1) return 0
+    return Math.round((Math.log(seconds) / Math.log(1800)) * 100)
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      {/* Header */}
+      <div style={{
+        padding: '16px 24px', borderBottom: '1px solid #1C1C2E',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>Configuración</div>
+          <div style={{ fontSize: 12, color: '#3B3B5C', marginTop: 2 }}>Comportamiento del agente</div>
+        </div>
+        <button onClick={saveSettings} disabled={saving} style={{
+          background: saved ? '#10B981' : 'linear-gradient(135deg, #E1306C, #F77737)',
+          border: 'none', color: 'white', padding: '10px 24px',
+          borderRadius: 10, fontSize: 13, fontWeight: 600,
+          cursor: saving ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
+        }}>
+          {saving ? 'Guardando...' : saved ? '✓ Guardado' : 'Guardar cambios'}
+        </button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 640 }}>
+
+        {/* Tiempo de respuesta */}
+        <div style={{
+          background: '#1C1C2E', border: '1px solid #2A2A40',
+          borderRadius: 14, padding: 24,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>⏱ Tiempo de respuesta</div>
+              <div style={{ fontSize: 12, color: '#3B3B5C', marginTop: 3 }}>
+                Pausa antes de responder a leads reales. El simulador responde siempre al instante.
+              </div>
+            </div>
+            <div style={{
+              fontSize: 22, fontWeight: 700, color: '#E1306C',
+              background: '#E1306C15', padding: '8px 16px', borderRadius: 10,
+              minWidth: 80, textAlign: 'center',
+            }}>
+              {formatDelay(settings.response_delay_seconds)}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 20 }}>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={secondsToSlider(settings.response_delay_seconds)}
+              onChange={e => setSettings(prev => ({
+                ...prev,
+                response_delay_seconds: sliderToSeconds(Number(e.target.value))
+              }))}
+              style={{
+                width: '100%',
+                accentColor: '#E1306C',
+                height: 6,
+                cursor: 'pointer',
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: '#3B3B5C' }}>
+              <span>1 seg</span>
+              <span>1 min</span>
+              <span>5 min</span>
+              <span>15 min</span>
+              <span>30 min</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Horario activo */}
+        <div style={{
+          background: '#1C1C2E', border: '1px solid #2A2A40',
+          borderRadius: 14, padding: 24,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>🕐 Horario activo</div>
+              <div style={{ fontSize: 12, color: '#3B3B5C', marginTop: 3 }}>
+                Fuera de este horario los mensajes se encolan y se responden al inicio del siguiente horario
+              </div>
+            </div>
+            {/* Toggle */}
+            <div
+              onClick={() => setSettings(prev => ({ ...prev, active_hours_enabled: !prev.active_hours_enabled }))}
+              style={{
+                width: 48, height: 26, borderRadius: 13,
+                background: settings.active_hours_enabled ? '#E1306C' : '#2A2A40',
+                cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 3,
+                left: settings.active_hours_enabled ? 25 : 3,
+                width: 20, height: 20, borderRadius: '50%',
+                background: 'white', transition: 'left 0.2s',
+              }} />
+            </div>
+          </div>
+
+          {settings.active_hours_enabled && (
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: '#3B3B5C', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Inicio
+                </div>
+                <input
+                  type="time"
+                  value={settings.active_hours_start}
+                  onChange={e => setSettings(prev => ({ ...prev, active_hours_start: e.target.value }))}
+                  style={{
+                    width: '100%', background: '#0E0E18', border: '1px solid #2A2A40',
+                    borderRadius: 10, color: '#E8E8F0', padding: '10px 14px',
+                    fontSize: 16, outline: 'none', boxSizing: 'border-box',
+                    colorScheme: 'dark',
+                  }}
+                />
+              </div>
+              <div style={{ color: '#3B3B5C', fontSize: 20, marginTop: 20 }}>→</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: '#3B3B5C', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Fin
+                </div>
+                <input
+                  type="time"
+                  value={settings.active_hours_end}
+                  onChange={e => setSettings(prev => ({ ...prev, active_hours_end: e.target.value }))}
+                  style={{
+                    width: '100%', background: '#0E0E18', border: '1px solid #2A2A40',
+                    borderRadius: 10, color: '#E8E8F0', padding: '10px 14px',
+                    fontSize: 16, outline: 'none', boxSizing: 'border-box',
+                    colorScheme: 'dark',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [activeNav, setActiveNav] = useState('agente')
   const [leads, setLeads] = useState<Lead[]>([])
@@ -834,7 +1040,7 @@ export default function Dashboard() {
         {activeNav === 'agente'   && <AgenteView leads={leads} />}
         {activeNav === 'leads'    && <LeadsView leads={leads} onSelectLead={setSelectedLead} selectedLead={selectedLead} messages={messages} />}
         {activeNav === 'links'    && <LinksView />}
-        {activeNav === 'settings' && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2A2A40', flexDirection: 'column', gap: 12 }}><div style={{ fontSize: 48 }}>⚙</div><div>Settings — próximamente</div></div>}
+        {activeNav === 'settings' && <SettingsView />}
       </div>
     </div>
   )
