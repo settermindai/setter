@@ -78,7 +78,7 @@ export async function GET(request: Request) {
           .select('*')
           .eq('lead_id', lead?.id)
           .order('created_at', { ascending: false })
-          .limit(10)
+          .limit(60)
 
         const history = (recentMessages || []).reverse().map((m: any) => ({
           role: m.role as 'user' | 'assistant',
