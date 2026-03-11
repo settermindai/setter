@@ -128,7 +128,7 @@ function ChatPanel({
   const [simLoading, setSimLoading] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, simMessages])
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [messages, simMessages])
 
   async function sendSimMessage() {
     if (!input.trim() || simLoading) return
@@ -143,7 +143,10 @@ function ChatPanel({
         body: JSON.stringify({ message: userMsg, history: simMessages }),
       })
       const data = await res.json()
-      setSimMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
+      const parts = data.reply.split('|||').map((p: string) => p.trim()).filter(Boolean)
+      for (const part of parts) {
+        setSimMessages(prev => [...prev, { role: 'assistant', content: part }])
+      }
     } catch {
       setSimMessages(prev => [...prev, { role: 'assistant', content: 'error al responder' }])
     }
@@ -189,23 +192,20 @@ function ChatPanel({
             {isSimulator ? 'Escribe un mensaje para probar el bot' : 'Sin mensajes aún'}
           </div>
         )}
-        {displayMessages.map((msg, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-start' : 'flex-end' }}>
-            <div style={{
-              maxWidth: '82%', padding: '8px 12px',
-              borderRadius: msg.role === 'user' ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
-              background: msg.role === 'user' ? '#1A1A2E' : 'linear-gradient(135deg, #E1306C, #F77737)',
-              fontSize: 12, lineHeight: 1.5, color: '#E8E8F0',
-            }}>
-              {msg.content}
-              {'created_at' in msg && (
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 3, textAlign: 'right' }}>
-                  {formatTime((msg as Message).created_at)}
-                </div>
-              )}
+        {displayMessages.map((msg, i) =>
+          msg.content.split('|||').map((part, j) => part.trim()).filter(Boolean).map((part, j) => (
+            <div key={`${i}-${j}`} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-start' : 'flex-end' }}>
+              <div style={{
+                maxWidth: '82%', padding: '8px 12px',
+                borderRadius: msg.role === 'user' ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
+                background: msg.role === 'user' ? '#1A1A2E' : 'linear-gradient(135deg, #E1306C, #F77737)',
+                fontSize: 12, lineHeight: 1.5, color: '#E8E8F0',
+              }}>
+                {part}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
         {simLoading && (
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <div style={{ padding: '8px 14px', borderRadius: '14px 4px 14px 14px', background: 'linear-gradient(135deg, #E1306C, #F77737)', fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
@@ -950,7 +950,7 @@ function SettingsView() {
             </div>
           )}
         </div>
-        
+
         {/* Reglas del agente */}
         <div style={{
           background: '#1C1C2E', border: '1px solid #2A2A40',
