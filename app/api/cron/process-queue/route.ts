@@ -92,8 +92,13 @@ export async function GET(request: Request) {
             lead_id: lead.id, role: 'assistant', content: aiResponse,
           })
         }
-
-        await sendInstagramMessage(item.sender_id, aiResponse)
+        console.log('AI RESPONSE RAW:', aiResponse)
+        console.log('PARTS:', aiResponse.split('|||'))
+        const parts = aiResponse.split('|||').map((p: string) => p.trim()).filter(Boolean)
+        for (const part of parts) {
+          await sendInstagramMessage(item.sender_id, part)
+          await new Promise(resolve => setTimeout(resolve, 1500))
+        }
         console.log(`✅ Cola procesada para ${item.sender_id}`)
 
       } catch (err) {
