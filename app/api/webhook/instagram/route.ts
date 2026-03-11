@@ -25,10 +25,33 @@ async function getSettings() {
   }
 }
 
+async function getIGUserInfo(igUserId: string) {
+  try {
+    const res = await fetch(`https://graph.instagram.com/v21.0/${igUserId}?fields=name,username&access_token=${process.env.INSTAGRAM_ACCESS_TOKEN}`)
+    const data = await res.json()
+    return { full_name: data.name || null, username: data.username || null }
+  } catch (e) {
+    return { full_name: null, username: null }
+  }
+}
+
 async function getOrCreateLead(supabase: any, igUserId: string) {
   const { data: existing } = await supabase.from('leads').select('*').eq('ig_user_id', igUserId).single()
-  if (existing) return existing
-  const { data: newLead } = await supabase.from('leads').insert({ ig_user_id: igUserId, status: 'new' }).select().single()
+  if (existing) {
+    // Actualizar nombre si no lo tenía
+    if (!existing.username || !existing.full_name) {
+      const info = await getIGUserInfo(igUserId)
+      if (info.username || info.full_name) {
+        await supabase.from('leads').update(info).eq('id', existing.id)
+        return { ...existing, ...info }
+      }
+    }
+    return existing
+  }
+  const info = await getIGUserInfo(igUserId)
+  const { data: newLead } = await supabase.from('leads').insert({
+    ig_user_id: igUserId, status: 'new', ...info
+  }).select().single()
   return newLead
 }
 
