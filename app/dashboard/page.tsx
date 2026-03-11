@@ -1080,7 +1080,7 @@ export default function Dashboard() {
       </div>
 
       {/* CONTENIDO */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', height: '100vh' }}>
         {activeNav === 'home'     && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2A2A40', flexDirection: 'column', gap: 12 }}><div style={{ fontSize: 48 }}>⌂</div><div>Home — próximamente</div></div>}
         {activeNav === 'agente'   && <AgenteView leads={leads} />}
         {activeNav === 'leads'    && <LeadsView leads={leads} onSelectLead={setSelectedLead} selectedLead={selectedLead} messages={messages} />}
