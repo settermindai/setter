@@ -160,11 +160,8 @@ function ChatPanel({
       width: 320, flexShrink: 0,
       background: '#18182A', borderLeft: '1px solid #1C1C2E',
       display: 'flex', flexDirection: 'column',
-      height: '100vh',
-      maxHeight: '100vh',
-      position: 'sticky',
-      top: 0,
       overflow: 'hidden',
+      alignSelf: 'stretch',
     }}>
       <div style={{
         padding: '14px 16px', borderBottom: '1px solid #1C1C2E',
