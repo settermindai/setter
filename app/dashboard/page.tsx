@@ -502,7 +502,6 @@ function InformesView({ t }: { t: typeof THEMES['dark'] }) {
 }
 
 function AgenteView({ t }: { t: typeof THEMES['dark'] }) {
-  const [subTab, setSubTab] = useState<'avatar' | 'simular'>('avatar')
   const [blocks, setBlocks] = useState<Blocks>({ identidad: '', negocio: '', calificacion: '', ejemplos: '' })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -522,59 +521,37 @@ function AgenteView({ t }: { t: typeof THEMES['dark'] }) {
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '0 24px', borderBottom: `1px solid ${t.border}`, display: 'flex', gap: 0, flexShrink: 0 }}>
-        {[{ id: 'avatar', label: '🎭 Avatar' }, { id: 'simular', label: '💬 Simular' }].map(tab => (
-          <button key={tab.id} onClick={() => setSubTab(tab.id as any)} style={{
-            padding: '14px 20px', background: 'none', border: 'none',
-            color: subTab === tab.id ? t.text : t.textMuted,
-            fontSize: 13, fontWeight: subTab === tab.id ? 600 : 400, cursor: 'pointer',
-            borderBottom: subTab === tab.id ? `2px solid ${t.accent}` : '2px solid transparent',
-          }}>{tab.label}</button>
-        ))}
-      </div>
-
-      {subTab === 'avatar' && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>Avatar del Agente</div>
-              <div style={{ fontSize: 12, color: t.textMuted }}>Define cómo habla y cualifica tu agente de IA</div>
-            </div>
-            <button onClick={saveBlocks} disabled={saving} style={{ background: saved ? '#10B981' : t.accentGradPink, border: 'none', color: 'white', padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              {saving ? 'Guardando...' : saved ? '✓ Guardado' : 'Guardar todo'}
-            </button>
+    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: t.text }}>Avatar del Agente</div>
+            <div style={{ fontSize: 12, color: t.textMuted }}>Define cómo habla y cualifica tu agente de IA</div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {AVATAR_BLOCKS.map(block => (
-              <div key={block.key} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: t.shadow }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>{block.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{block.label}</div>
-                    <div style={{ fontSize: 11, color: t.textMuted }}>{block.desc}</div>
-                  </div>
+          <button onClick={saveBlocks} disabled={saving} style={{ background: saved ? '#10B981' : t.accentGradPink, border: 'none', color: 'white', padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            {saving ? 'Guardando...' : saved ? '✓ Guardado' : 'Guardar todo'}
+          </button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {AVATAR_BLOCKS.map(block => (
+            <div key={block.key} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: t.shadow }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>{block.icon}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{block.label}</div>
+                  <div style={{ fontSize: 11, color: t.textMuted }}>{block.desc}</div>
                 </div>
-                <textarea value={blocks[block.key as keyof Blocks] as string} onChange={e => setBlocks(prev => ({ ...prev, [block.key]: e.target.value }))}
-                  style={{ height: 200, background: t.surface2, border: `1px solid ${t.border}`, borderRadius: 10, color: t.text, fontSize: 11, lineHeight: 1.8, padding: 14, resize: 'none', outline: 'none', fontFamily: "'SF Mono', 'Fira Code', monospace" }}
-                  onFocus={e => e.target.style.borderColor = t.accent}
-                  onBlur={e => e.target.style.borderColor = t.border}
-                />
               </div>
-            ))}
-          </div>
+              <textarea value={blocks[block.key as keyof Blocks] as string} onChange={e => setBlocks(prev => ({ ...prev, [block.key]: e.target.value }))}
+                style={{ height: 200, background: t.surface2, border: `1px solid ${t.border}`, borderRadius: 10, color: t.text, fontSize: 11, lineHeight: 1.8, padding: 14, resize: 'none', outline: 'none', fontFamily: "'SF Mono', 'Fira Code', monospace" }}
+                onFocus={e => e.target.style.borderColor = t.accent}
+                onBlur={e => e.target.style.borderColor = t.border}
+              />
+            </div>
+          ))}
         </div>
-      )}
-
-      {subTab === 'simular' && (
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textFaint, flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: 32 }}>💬</div>
-            <div style={{ fontSize: 13 }}>Usa el panel derecho para simular una conversación</div>
-          </div>
-          <ChatPanel lead={null} messages={[]} isSimulator t={t} />
-        </div>
-      )}
+      </div>
+      <ChatPanel lead={null} messages={[]} isSimulator t={t} />
     </div>
   )
 }
