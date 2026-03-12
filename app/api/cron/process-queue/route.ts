@@ -85,8 +85,6 @@ export async function GET(request: Request) {
           content: m.content,
         }))
 
-        history.push({ role: 'user', content: item.message_text })
-
         const aiResponse = await getAIResponse(systemPrompt, history)
 
         if (lead) {
