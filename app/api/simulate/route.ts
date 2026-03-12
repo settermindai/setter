@@ -7,32 +7,37 @@ export async function POST(request: Request) {
   try {
     const { message, history } = await request.json()
 
-    // Cargar bloques desde Supabase
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    let blocks = {
-      identidad: '', negocio: '', calificacion: '', ejemplos: ''
-    }
+    // Bloques
+    const { data: blocksData } = await supabase.from('blocks').select('*').limit(1).single()
+    const blocks = blocksData ? {
+      identidad: blocksData.identidad?.content || '',
+      negocio: blocksData.negocio?.content || '',
+      calificacion: blocksData.calificacion?.content || '',
+      ejemplos: blocksData.ejemplos?.content || '',
+    } : { identidad: '', negocio: '', calificacion: '', ejemplos: '' }
 
-    const { data } = await supabase.from('blocks').select('*').limit(1).single()
-    if (data) {
-      blocks = {
-        identidad: data.identidad?.content || '',
-        negocio: data.negocio?.content || '',
-        calificacion: data.calificacion?.content || '',
-        ejemplos: data.ejemplos?.content || '',
-      }
-    }
+    // Recursos
+    const { data: resourcesData } = await supabase.from('resources').select('*')
+    const resources = resourcesData && resourcesData.length > 0
+      ? resourcesData.map((r: any) => `- ${r.name}: ${r.url}\n  Cuándo enviarlo: ${r.guide_text}`).join('\n')
+      : null
+
+    // Reglas
+    const { data: settingsData } = await supabase.from('settings').select('rules').limit(1).single()
+    const rules = settingsData?.rules || null
+
+    const systemPrompt = buildSystemPrompt(blocks, resources, rules)
 
     const conversationHistory = [
       ...(history || []),
       { role: 'user' as const, content: message }
     ]
 
-    const systemPrompt = buildSystemPrompt(blocks)
     const reply = await getAIResponse(systemPrompt, conversationHistory)
 
     return NextResponse.json({ reply })
