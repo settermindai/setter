@@ -130,6 +130,16 @@ function ChatPanel({ lead, messages, onClose, isSimulator, t }: {
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [messages, simMessages])
+  
+  useEffect(() => {
+    if (isSimulator) {
+      fetch('/api/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reset: true, message: '' }),
+      })
+    }
+  }, [isSimulator])
 
   async function sendSimMessage() {
     if (!input.trim() || simLoading) return
