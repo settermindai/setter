@@ -30,7 +30,9 @@ export async function POST(request: Request) {
     // Reglas
     const { data: settingsData } = await supabase.from('settings').select('rules').limit(1).single()
     const rules = settingsData?.rules || null
-
+    
+    console.log('BLOCKS:', JSON.stringify(blocks))
+    console.log('RULES:', rules)
     const systemPrompt = buildSystemPrompt(blocks, resources, rules)
 
     const conversationHistory = [
