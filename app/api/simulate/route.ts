@@ -10,28 +10,27 @@ function getSupabase() {
   )
 }
 
+async function getOrCreateSimLead(supabase: any) {
+  const { data: existing } = await supabase.from('leads').select('*').eq('ig_user_id', 'simulator').single()
+  if (existing) return existing
+  const { data: newLead } = await supabase.from('leads').insert({
+    ig_user_id: 'simulator', username: 'simulator', status: 'new'
+  }).select().single()
+  return newLead
+}
+
 export async function POST(request: Request) {
   try {
     const { message, reset } = await request.json()
     const supabase = getSupabase()
 
-    // Si reset, borrar lead simulador
-    if (reset) {
-      const { data: simLead } = await supabase.from('leads').select('id').eq('ig_user_id', 'simulator').single()
-      if (simLead) {
-        await supabase.from('messages').delete().eq('lead_id', simLead.id)
-        await supabase.from('leads').delete().eq('id', simLead.id)
-      }
-      return NextResponse.json({ ok: true })
-    }
+    const lead = await getOrCreateSimLead(supabase)
+    if (!lead) return NextResponse.json({ reply: 'error creando lead simulador' }, { status: 500 })
 
-    // Obtener o crear lead simulador
-    let { data: lead } = await supabase.from('leads').select('*').eq('ig_user_id', 'simulator').single()
-    if (!lead) {
-      const { data: newLead } = await supabase.from('leads').insert({
-        ig_user_id: 'simulator', username: 'simulator', status: 'new'
-      }).select().single()
-      lead = newLead
+    // Reset: solo borra mensajes, mantiene el lead
+    if (reset) {
+      await supabase.from('messages').delete().eq('lead_id', lead.id)
+      return NextResponse.json({ ok: true })
     }
 
     // Guardar mensaje del usuario
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
       content: m.content,
     }))
 
-    // Cargar bloques, recursos y reglas — igual que el cron
+    // Cargar bloques, recursos y reglas
     const { data: blocksData } = await supabase.from('blocks').select('*').limit(1).single()
     const blocks = blocksData ? {
       identidad: blocksData.identidad?.content || '',
