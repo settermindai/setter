@@ -57,9 +57,10 @@ async function getOrCreateLead(supabase: any, igUserId: string) {
 
 function isWithinActiveHours(start: string, end: string): boolean {
   const now = new Date()
+  const spainTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }))
   const [sh, sm] = start.split(':').map(Number)
   const [eh, em] = end.split(':').map(Number)
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = spainTime.getHours() * 60 + spainTime.getMinutes()
   const startMinutes = sh * 60 + sm
   const endMinutes = eh * 60 + em
   return nowMinutes >= startMinutes && nowMinutes < endMinutes
@@ -67,10 +68,11 @@ function isWithinActiveHours(start: string, end: string): boolean {
 
 function getNextActiveTime(start: string): Date {
   const now = new Date()
+  const spainNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }))
   const [sh, sm] = start.split(':').map(Number)
-  const next = new Date(now)
+  const next = new Date(spainNow)
   next.setHours(sh, sm, 0, 0)
-  if (next <= now) next.setDate(next.getDate() + 1)
+  if (next <= spainNow) next.setDate(next.getDate() + 1)
   return next
 }
 
