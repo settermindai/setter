@@ -77,10 +77,10 @@ export async function GET(request: Request) {
           .from('messages')
           .select('*')
           .eq('lead_id', lead?.id)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: true })
           .limit(60)
 
-        const history = (recentMessages || []).reverse().map((m: any) => ({
+        const history = (recentMessages || []).map((m: any) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
         }))
