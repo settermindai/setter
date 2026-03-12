@@ -19,6 +19,26 @@ async function getOrCreateSimLead(supabase: any) {
   return newLead
 }
 
+async function loadContext(supabase: any) {
+  const { data: blocksData } = await supabase.from('blocks').select('*').limit(1).single()
+  const blocks = blocksData ? {
+    identidad: blocksData.identidad?.content || '',
+    negocio: blocksData.negocio?.content || '',
+    calificacion: blocksData.calificacion?.content || '',
+    ejemplos: blocksData.ejemplos?.content || '',
+  } : { identidad: '', negocio: '', calificacion: '', ejemplos: '' }
+
+  const { data: resourcesData } = await supabase.from('resources').select('*')
+  const resources = resourcesData && resourcesData.length > 0
+    ? resourcesData.map((r: any) => `- ${r.name}: ${r.url}\n  Cuándo enviarlo: ${r.guide_text}`).join('\n')
+    : null
+
+  const { data: settingsData } = await supabase.from('settings').select('*').limit(1).single()
+  const rules = settingsData?.rules || null
+
+  return { blocks, resources, rules }
+}
+
 export async function POST(request: Request) {
   try {
     const { message, reset } = await request.json()
@@ -27,48 +47,40 @@ export async function POST(request: Request) {
     const lead = await getOrCreateSimLead(supabase)
     if (!lead) return NextResponse.json({ reply: 'error creando lead simulador' }, { status: 500 })
 
-    // Reset: solo borra mensajes, mantiene el lead
+    // Reset: solo borra mensajes
     if (reset) {
       await supabase.from('messages').delete().eq('lead_id', lead.id)
       return NextResponse.json({ ok: true })
     }
 
-    // Cargar historial previo desde Supabase
-    const { data: history } = await supabase.from('messages').select('*').eq('lead_id', lead.id).order('created_at', { ascending: true })
-    const conversationHistory = (history || []).map((m: any) => ({
+    if (!message) return NextResponse.json({ reply: 'sin mensaje' })
+
+    // Cargar historial previo
+    const { data: historyData } = await supabase
+      .from('messages').select('*')
+      .eq('lead_id', lead.id)
+      .order('created_at', { ascending: true })
+
+    const conversationHistory = (historyData || []).map((m: any) => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,
     }))
 
-    // Añadir mensaje actual al final igual que hace el cron
+    // Añadir mensaje actual al final igual que el cron
     conversationHistory.push({ role: 'user', content: message })
 
-    // Guardar mensaje del usuario en Supabase
+    // Guardar mensaje en Supabase
     await supabase.from('messages').insert({
       lead_id: lead.id, role: 'user', content: message
     })
 
-    // Cargar bloques, recursos y reglas
-    const { data: blocksData } = await supabase.from('blocks').select('*').limit(1).single()
-    const blocks = blocksData ? {
-      identidad: blocksData.identidad?.content || '',
-      negocio: blocksData.negocio?.content || '',
-      calificacion: blocksData.calificacion?.content || '',
-      ejemplos: blocksData.ejemplos?.content || '',
-    } : { identidad: '', negocio: '', calificacion: '', ejemplos: '' }
-
-    const { data: resourcesData } = await supabase.from('resources').select('*')
-    const resources = resourcesData && resourcesData.length > 0
-      ? resourcesData.map((r: any) => `- ${r.name}: ${r.url}\n  Cuándo enviarlo: ${r.guide_text}`).join('\n')
-      : null
-
-    const { data: settingsData } = await supabase.from('settings').select('rules').limit(1).single()
-    const rules = settingsData?.rules || null
-
+    // Cargar contexto
+    const { blocks, resources, rules } = await loadContext(supabase)
     const systemPrompt = buildSystemPrompt(blocks, resources, rules)
+
     const aiResponse = await getAIResponse(systemPrompt, conversationHistory)
 
-    // Guardar respuesta del bot
+    // Guardar respuesta
     await supabase.from('messages').insert({
       lead_id: lead.id, role: 'assistant', content: aiResponse
     })
