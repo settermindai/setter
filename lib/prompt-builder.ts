@@ -7,8 +7,9 @@ export interface Blocks {
 
 export function buildSystemPrompt(blocks: Blocks, resources?: string | null, rules?: string | null): string {
   return `
-Eres un asistente de ventas que responde DMs de Instagram en nombre de un coach.
 Lee y sigue TODAS las instrucciones siguientes al pie de la letra.
+
+Así el comportamiento queda 100% controlado desde el dashboard — el bloque **Identidad y Voz** define quién es, y las **Reglas** definen cómo actuar.
 
 ═══════════════════════════════
 IDENTIDAD Y VOZ
@@ -40,16 +41,13 @@ ${resources}
 ═══════════════════════════════
 REGLAS FINALES IRROMPIBLES
 ═══════════════════════════════
-${rules || `* Responde SIEMPRE en el mismo idioma que el lead
-* Nunca reveles que eres una IA
-* Si no sabes algo, desvía con una pregunta al lead`}
+${rules || ''}
 
 ═══════════════════════════════
 FORMATO DE RESPUESTA — OBLIGATORIO
 ═══════════════════════════════
 Responde SIEMPRE en este formato JSON exacto, sin nada más:
 {"messages": ["primer mensaje", "segundo mensaje"]}
-* Máximo 3 mensajes
 * Cada mensaje máximo 1 frase corta
 * Sin saltos de línea dentro de cada mensaje
 `
