@@ -33,17 +33,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true })
     }
 
-    // Guardar mensaje del usuario
-    await supabase.from('messages').insert({
-      lead_id: lead.id, role: 'user', content: message
-    })
-
-    // Cargar historial completo desde Supabase
+    // Cargar historial previo desde Supabase
     const { data: history } = await supabase.from('messages').select('*').eq('lead_id', lead.id).order('created_at', { ascending: true })
     const conversationHistory = (history || []).map((m: any) => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,
     }))
+
+    // Añadir mensaje actual al final igual que hace el cron
+    conversationHistory.push({ role: 'user', content: message })
+
+    // Guardar mensaje del usuario en Supabase
+    await supabase.from('messages').insert({
+      lead_id: lead.id, role: 'user', content: message
+    })
 
     // Cargar bloques, recursos y reglas
     const { data: blocksData } = await supabase.from('blocks').select('*').limit(1).single()
