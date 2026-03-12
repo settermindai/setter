@@ -130,6 +130,49 @@ export async function POST(request: Request) {
       console.log(`⏱ Encolado con delay ${settings.response_delay_seconds}s`)
     }
 
+// Modo instantáneo — bypasea cola y cron
+    if (settings.response_delay_seconds === 0) {
+      const { data: blocksData } = await supabase.from('blocks').select('*').limit(1).single()
+      const blocks = blocksData ? {
+        identidad: blocksData.identidad?.content || '',
+        negocio: blocksData.negocio?.content || '',
+        calificacion: blocksData.calificacion?.content || '',
+        ejemplos: blocksData.ejemplos?.content || '',
+      } : { identidad: '', negocio: '', calificacion: '', ejemplos: '' }
+
+      const { data: resourcesData } = await supabase.from('resources').select('*')
+      const resources = resourcesData && resourcesData.length > 0
+        ? resourcesData.map((r: any) => `- ${r.name}: ${r.url}\n  Cuándo enviarlo: ${r.guide_text}`).join('\n')
+        : null
+
+      const rules = settings.rules || null
+      const { buildSystemPrompt } = await import('@/lib/prompt-builder')
+      const { getAIResponse } = await import('@/lib/ai')
+
+      const systemPrompt = buildSystemPrompt(blocks, resources, rules)
+
+      const { data: leadData } = await supabase.from('leads').select('*').eq('ig_user_id', senderId).single()
+      const { data: recentMessages } = await supabase.from('messages').select('*').eq('lead_id', leadData?.id).order('created_at', { ascending: true }).limit(60)
+      const history = (recentMessages || []).map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+
+      const aiResponse = await getAIResponse(systemPrompt, history)
+
+      if (leadData) {
+        await supabase.from('messages').insert({ lead_id: leadData.id, role: 'assistant', content: aiResponse })
+      }
+
+      const parts = aiResponse.split('|||').map((p: string) => p.trim()).filter(Boolean)
+      for (const part of parts) {
+        await fetch(`https://graph.instagram.com/v21.0/me/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipient: { id: senderId }, message: { text: part }, access_token: process.env.INSTAGRAM_ACCESS_TOKEN })
+        })
+      }
+
+      return NextResponse.json({ status: 'instant' })
+    }
+
     await supabase.from('message_queue').insert({
       sender_id: senderId,
       message_text: messageText,
