@@ -109,13 +109,8 @@ export async function POST(request: Request) {
     const supabase = getSupabase()
     const settings = await getSettings()
 
-    // Guardar lead y mensaje
+    // Guardar solo el lead, el mensaje se guarda en cada modo
     const lead = await getOrCreateLead(supabase, senderId)
-    if (lead) {
-      await supabase.from('messages').insert({
-        lead_id: lead.id, role: 'user', content: messageText, ig_message_id: messageId || null,
-      })
-    }
 
     // Modo instantáneo — bypasea cola, cron y horario
     if (settings.response_delay_seconds === 0) {
@@ -138,12 +133,16 @@ export async function POST(request: Request) {
       const rules = settings.rules || null
       const systemPrompt = buildSystemPrompt(blocks, resources, rules)
 
+      // Cargar historial ANTES de guardar el mensaje nuevo
       const { data: recentMessages } = await supabase.from('messages').select('*').eq('lead_id', lead?.id).order('created_at', { ascending: true }).limit(60)
-      
       const history = (recentMessages || []).map((m: any) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }))
+
+      history.push({ role: 'user', content: messageText })
+      await supabase.from('messages').insert({ lead_id: lead?.id, role: 'user', content: messageText, ig_message_id: messageId || null })
+
       const aiResponse = await getAIResponse(systemPrompt, history)
 
       if (lead) {
@@ -171,6 +170,10 @@ export async function POST(request: Request) {
       scheduledFor = new Date(Date.now() + (settings.response_delay_seconds * 1000))
       console.log(`⏱ Encolado con delay ${settings.response_delay_seconds}s`)
     }
+
+    await supabase.from('messages').insert({
+      lead_id: lead?.id, role: 'user', content: messageText, ig_message_id: messageId || null,
+    })
 
     await supabase.from('message_queue').insert({
       sender_id: senderId,
