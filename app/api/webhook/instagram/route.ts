@@ -118,12 +118,31 @@ export async function POST(request: Request) {
     // Guardar solo el lead, el mensaje se guarda en cada modo
     const lead = await getOrCreateLead(supabase, senderId)
 
-    // Modo instantáneo — bypasea cola, cron y horario
     // Modo instantáneo — igual que el simulador
     if (settings.response_delay_seconds === 0) {
       const { buildSystemPrompt } = await import('@/lib/prompt-builder')
       const { getAIResponse } = await import('@/lib/ai')
 
+      // PASO 1: Cargar historial previo (igual que simulate)
+      const { data: historyData } = await supabase
+        .from('messages').select('*')
+        .eq('lead_id', lead?.id)
+        .order('created_at', { ascending: true })
+
+      const conversationHistory = (historyData || []).map((m: any) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }))
+
+      // PASO 2: push del mensaje (igual que simulate)
+      conversationHistory.push({ role: 'user', content: messageText })
+
+      // PASO 3: Guardar mensaje en Supabase (igual que simulate)
+      await supabase.from('messages').insert({
+        lead_id: lead?.id, role: 'user', content: messageText, ig_message_id: messageId || null
+      })
+
+      // PASO 4: Cargar contexto (igual que simulate)
       const { data: blocksData } = await supabase.from('blocks').select('*').limit(1).single()
       const blocks = blocksData ? {
         identidad: blocksData.identidad?.content || '',
@@ -140,29 +159,25 @@ export async function POST(request: Request) {
       const rules = settings.rules || null
       const systemPrompt = buildSystemPrompt(blocks, resources, rules)
 
-      // Igual que simulate: cargar historial previo SIN el mensaje nuevo
-      const { data: recentMessages } = await supabase.from('messages').select('*').eq('lead_id', lead?.id).order('created_at', { ascending: true }).limit(60)
-      const history = (recentMessages || []).map((m: any) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }))
+      // PASO 5: Llamar a Claude (igual que simulate)
+      const aiResponse = await getAIResponse(systemPrompt, conversationHistory)
 
-      // Igual que simulate: añadir mensaje al final con push
-      history.push({ role: 'user', content: messageText })
+      // PASO 6: Guardar respuesta (igual que simulate)
+      await supabase.from('messages').insert({
+        lead_id: lead?.id, role: 'assistant', content: aiResponse
+      })
 
-      // Llamar a Claude
-      const aiResponse = await getAIResponse(systemPrompt, history)
-
-      // Guardar ambos mensajes en Supabase
-      await supabase.from('messages').insert({ lead_id: lead?.id, role: 'user', content: messageText, ig_message_id: messageId || null })
-      await supabase.from('messages').insert({ lead_id: lead?.id, role: 'assistant', content: aiResponse })
-
+      // Enviar a Instagram
       const parts = aiResponse.split('|||').map((p: string) => p.trim()).filter(Boolean)
       for (const part of parts) {
         await fetch(`https://graph.instagram.com/v21.0/me/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ recipient: { id: senderId }, message: { text: part }, access_token: process.env.INSTAGRAM_ACCESS_TOKEN })
+          body: JSON.stringify({
+            recipient: { id: senderId },
+            message: { text: part },
+            access_token: process.env.INSTAGRAM_ACCESS_TOKEN
+          })
         })
       }
 
