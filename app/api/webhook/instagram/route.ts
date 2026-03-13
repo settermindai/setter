@@ -139,8 +139,22 @@ export async function POST(request: Request) {
       const systemPrompt = buildSystemPrompt(blocks, resources, rules)
 
       const { data: recentMessages } = await supabase.from('messages').select('*').eq('lead_id', lead?.id).order('created_at', { ascending: true }).limit(60)
-      const history = (recentMessages || []).map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      const rawHistory = (recentMessages || []).map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
+      // Unir mensajes consecutivos del mismo rol
+      const history = rawHistory.reduce((acc: any[], msg) => {
+        if (acc.length > 0 && acc[acc.length - 1].role === msg.role) {
+          acc[acc.length - 1].content += '\n' + msg.content
+        } else {
+          acc.push({ role: msg.role, content: msg.content })
+        }
+        return acc
+      }, [])
+
+      // Asegurarse que el último mensaje es del usuario
+      if (history.length === 0 || history[history.length - 1].role !== 'user') {
+        history.push({ role: 'user', content: messageText })
+      }
       const aiResponse = await getAIResponse(systemPrompt, history)
 
       if (lead) {

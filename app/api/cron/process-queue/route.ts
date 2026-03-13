@@ -80,10 +80,23 @@ export async function GET(request: Request) {
           .order('created_at', { ascending: true })
           .limit(60)
 
-        const history = (recentMessages || []).map((m: any) => ({
+        const rawHistory = (recentMessages || []).map((m: any) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
         }))
+
+        const history = rawHistory.reduce((acc: any[], msg) => {
+          if (acc.length > 0 && acc[acc.length - 1].role === msg.role) {
+            acc[acc.length - 1].content += '\n' + msg.content
+          } else {
+            acc.push({ role: msg.role, content: msg.content })
+          }
+          return acc
+        }, [])
+
+        if (history.length === 0 || history[history.length - 1].role !== 'user') {
+          history.push({ role: 'user', content: item.message_text })
+        }
 
         const aiResponse = await getAIResponse(systemPrompt, history)
 
