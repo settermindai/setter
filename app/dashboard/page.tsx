@@ -658,17 +658,20 @@ function ConfiguracionView({ theme, setTheme, t }: { theme: Theme; setTheme: (t:
   }
 
   function formatDelay(s: number) { 
-  if (s === 0) return 'Instantáneo'
-  if (s < 60) return `${s} seg`
-  if (s < 3600) return `${Math.floor(s / 60)} min`
-  return `${Math.floor(s / 3600)}h` 
+    if (s === 0) return 'Instantáneo'
+    if (s < 60) return `${s} seg`
+    if (s < 3600) return `${Math.floor(s / 60)} min`
+    return `${Math.floor(s / 3600)}h` 
   }
   function sliderToSeconds(v: number) { 
-  if (v === 0) return 0
-  return Math.round(Math.exp(v * Math.log(1800) / 100)) 
+    if (v === 0) return 0
+    return Math.round(Math.exp(v * Math.log(1800) / 100)) 
   }
-  function secondsToSlider(s: number) { if (s <= 1) return 0; return Math.round((Math.log(s) / Math.log(1800)) * 100) }
-
+  function secondsToSlider(s: number) { 
+    if (s === 0) return 0
+    if (s <= 1) return 1
+    return Math.round((Math.log(s) / Math.log(1800)) * 100) 
+  }
   const card = { background: t.surface, border: `1px solid ${t.border}`, borderRadius: 14, padding: 24, boxShadow: t.shadow }
   const inp = { width: '100%', background: t.surface2, border: `1px solid ${t.border}`, borderRadius: 10, color: t.text, padding: '10px 14px', fontSize: 16, outline: 'none', boxSizing: 'border-box' as const, colorScheme: theme as any }
 
