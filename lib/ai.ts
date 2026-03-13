@@ -29,6 +29,10 @@ export async function getAIResponse(
     throw new Error('Error llamando a la IA')
   }
 
+  if (!response.ok || !data.content?.[0]?.text) {
+    console.error('Error API Anthropic:', JSON.stringify(data))
+    throw new Error('Error llamando a la IA')
+  }
   const raw = data.content[0].text
 
   try {
