@@ -109,6 +109,12 @@ export async function POST(request: Request) {
     const supabase = getSupabase()
     const settings = await getSettings()
 
+    // Evitar procesar el mismo mensaje dos veces
+    if (messageId) {
+      const { data: existing } = await supabase.from('messages').select('id').eq('ig_message_id', messageId).single()
+      if (existing) return NextResponse.json({ status: 'duplicate ignored' })
+    }
+
     // Guardar solo el lead, el mensaje se guarda en cada modo
     const lead = await getOrCreateLead(supabase, senderId)
 
