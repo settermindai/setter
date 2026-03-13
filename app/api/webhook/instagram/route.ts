@@ -113,6 +113,7 @@ export async function POST(request: Request) {
     const lead = await getOrCreateLead(supabase, senderId)
 
     // Modo instantáneo — bypasea cola, cron y horario
+    // Modo instantáneo — igual que el simulador
     if (settings.response_delay_seconds === 0) {
       const { buildSystemPrompt } = await import('@/lib/prompt-builder')
       const { getAIResponse } = await import('@/lib/ai')
@@ -133,19 +134,22 @@ export async function POST(request: Request) {
       const rules = settings.rules || null
       const systemPrompt = buildSystemPrompt(blocks, resources, rules)
 
-      // Cargar historial ANTES de guardar el mensaje nuevo
-      await supabase.from('messages').insert({ lead_id: lead?.id, role: 'user', content: messageText, ig_message_id: messageId || null })
-
-      const { data: freshMessages } = await supabase.from('messages').select('*').eq('lead_id', lead?.id).order('created_at', { ascending: true }).limit(60)
-      const history = (freshMessages || []).map((m: any) => ({
+      // Igual que simulate: cargar historial previo SIN el mensaje nuevo
+      const { data: recentMessages } = await supabase.from('messages').select('*').eq('lead_id', lead?.id).order('created_at', { ascending: true }).limit(60)
+      const history = (recentMessages || []).map((m: any) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }))
+
+      // Igual que simulate: añadir mensaje al final con push
+      history.push({ role: 'user', content: messageText })
+
+      // Llamar a Claude
       const aiResponse = await getAIResponse(systemPrompt, history)
 
-      if (lead) {
-        await supabase.from('messages').insert({ lead_id: lead.id, role: 'assistant', content: aiResponse })
-      }
+      // Guardar ambos mensajes en Supabase
+      await supabase.from('messages').insert({ lead_id: lead?.id, role: 'user', content: messageText, ig_message_id: messageId || null })
+      await supabase.from('messages').insert({ lead_id: lead?.id, role: 'assistant', content: aiResponse })
 
       const parts = aiResponse.split('|||').map((p: string) => p.trim()).filter(Boolean)
       for (const part of parts) {
