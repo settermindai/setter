@@ -107,6 +107,7 @@ export async function POST(request: Request) {
     if (!messageText) return NextResponse.json({ status: 'no text ignored' })
 
     const supabase = getSupabase()
+    const settings = await getSettings()
 
     // Guardar lead y mensaje
     const lead = await getOrCreateLead(supabase, senderId)
@@ -116,22 +117,11 @@ export async function POST(request: Request) {
       })
     }
 
-    // Calcular cuándo responder
-    const settings = await getSettings()
-    let scheduledFor: Date
-
-    if (settings.active_hours_enabled && !isWithinActiveHours(settings.active_hours_start, settings.active_hours_end)) {
-      // Fuera de horario → encolar para el inicio del próximo horario
-      scheduledFor = getNextActiveTime(settings.active_hours_start)
-      console.log(`⏳ Fuera de horario — encolado para ${scheduledFor.toISOString()}`)
-    } else {
-      // Dentro de horario → encolar con delay
-      scheduledFor = new Date(Date.now() + (settings.response_delay_seconds * 1000))
-      console.log(`⏱ Encolado con delay ${settings.response_delay_seconds}s`)
-    }
-
-// Modo instantáneo — bypasea cola y cron
+    // Modo instantáneo — bypasea cola, cron y horario
     if (settings.response_delay_seconds === 0) {
+      const { buildSystemPrompt } = await import('@/lib/prompt-builder')
+      const { getAIResponse } = await import('@/lib/ai')
+
       const { data: blocksData } = await supabase.from('blocks').select('*').limit(1).single()
       const blocks = blocksData ? {
         identidad: blocksData.identidad?.content || '',
@@ -146,19 +136,15 @@ export async function POST(request: Request) {
         : null
 
       const rules = settings.rules || null
-      const { buildSystemPrompt } = await import('@/lib/prompt-builder')
-      const { getAIResponse } = await import('@/lib/ai')
-
       const systemPrompt = buildSystemPrompt(blocks, resources, rules)
 
-      const { data: leadData } = await supabase.from('leads').select('*').eq('ig_user_id', senderId).single()
-      const { data: recentMessages } = await supabase.from('messages').select('*').eq('lead_id', leadData?.id).order('created_at', { ascending: true }).limit(60)
+      const { data: recentMessages } = await supabase.from('messages').select('*').eq('lead_id', lead?.id).order('created_at', { ascending: true }).limit(60)
       const history = (recentMessages || []).map((m: any) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
       const aiResponse = await getAIResponse(systemPrompt, history)
 
-      if (leadData) {
-        await supabase.from('messages').insert({ lead_id: leadData.id, role: 'assistant', content: aiResponse })
+      if (lead) {
+        await supabase.from('messages').insert({ lead_id: lead.id, role: 'assistant', content: aiResponse })
       }
 
       const parts = aiResponse.split('|||').map((p: string) => p.trim()).filter(Boolean)
@@ -171,6 +157,16 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json({ status: 'instant' })
+    }
+
+    // Modo con delay — encolar
+    let scheduledFor: Date
+    if (settings.active_hours_enabled && !isWithinActiveHours(settings.active_hours_start, settings.active_hours_end)) {
+      scheduledFor = getNextActiveTime(settings.active_hours_start)
+      console.log(`⏳ Fuera de horario — encolado para ${scheduledFor.toISOString()}`)
+    } else {
+      scheduledFor = new Date(Date.now() + (settings.response_delay_seconds * 1000))
+      console.log(`⏱ Encolado con delay ${settings.response_delay_seconds}s`)
     }
 
     await supabase.from('message_queue').insert({
