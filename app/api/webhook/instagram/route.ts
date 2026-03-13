@@ -134,15 +134,13 @@ export async function POST(request: Request) {
       const systemPrompt = buildSystemPrompt(blocks, resources, rules)
 
       // Cargar historial ANTES de guardar el mensaje nuevo
-      const { data: recentMessages } = await supabase.from('messages').select('*').eq('lead_id', lead?.id).order('created_at', { ascending: true }).limit(60)
-      const history = (recentMessages || []).map((m: any) => ({
+      await supabase.from('messages').insert({ lead_id: lead?.id, role: 'user', content: messageText, ig_message_id: messageId || null })
+
+      const { data: freshMessages } = await supabase.from('messages').select('*').eq('lead_id', lead?.id).order('created_at', { ascending: true }).limit(60)
+      const history = (freshMessages || []).map((m: any) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }))
-
-      history.push({ role: 'user', content: messageText })
-      await supabase.from('messages').insert({ lead_id: lead?.id, role: 'user', content: messageText, ig_message_id: messageId || null })
-
       const aiResponse = await getAIResponse(systemPrompt, history)
 
       if (lead) {
